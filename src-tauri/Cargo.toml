@@ -1,0 +1,54 @@
+[package]
+name = "lockon-ewac"
+version = "1.0.0"
+description = "A Tauri App"
+authors = ["you"]
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[lib]
+# The `_lib` suffix may seem redundant but it is necessary
+# to make the lib name unique and wouldn't conflict with the bin name.
+# This seems to be only an issue on Windows, see https://github.com/rust-lang/cargo/issues/8519
+name = "lockon_ewac_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tauri-plugin-sql = { version = "2.4.0", features = ["sqlite"] }
+tauri-plugin-shell = "2.3.5"
+# Needed so the operator can pick a capture file and the engine receives a real
+# filesystem path. A browser file input only exposes the basename, which the
+# sidecar cannot open.
+tauri-plugin-dialog = "2"
+sysinfo = "0.33"
+tauri-plugin-single-instance = "2.5.0"
+
+# Two things the app cannot do correctly without the Win32 API directly:
+#
+#  * **Report a fatal startup failure.** The binary is built with
+#    `windows_subsystem = "windows"`, so it has no console. A panic in `main`
+#    therefore produces nothing at all — the process simply vanishes. A
+#    MessageBox is the only way to tell the operator why.
+#  * **Take the sidecar down with the app.** `tauri-plugin-shell` reaps its own
+#    children on a clean exit, but a hard kill (Task Manager, a panic that
+#    aborts) never reaches that path, and the engine's *grandchildren* — a
+#    running hashcat, for instance — are never covered by it at all. A job
+#    object with KILL_ON_JOB_CLOSE is what makes the whole tree die with the
+#    app however the app died.
+[target.'cfg(windows)'.dependencies]
+windows = { version = "0.61", features = [
+    "Win32_Foundation",
+    # CreateJobObjectW is gated on this: its first parameter is a
+    # SECURITY_ATTRIBUTES pointer.
+    "Win32_Security",
+    "Win32_System_JobObjects",
+    "Win32_System_Threading",
+    "Win32_UI_WindowsAndMessaging",
+] }

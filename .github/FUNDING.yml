@@ -1,0 +1,10 @@
+# What the "Sponsor" button on this repository points at.
+#
+# The Sponsors profile already existed at github.com/sponsors/Meow-011; nothing
+# linked the repository to it, so the button never appeared and the page could
+# only be reached by somebody who already knew the URL.
+#
+# One key, because there is one funding route. The other platforms GitHub
+# supports are left out rather than listed empty: a funding file naming a
+# platform with no account behind it sends a reader to a dead page.
+github: Meow-011

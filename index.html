@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>LOCKON EWAC</title>
+    <!--
+      No webfont request. The four families are carried in the build and declared
+      in `src/fonts.css`, so the interface looks the same in a vehicle as it does
+      on a desk, and the shipped `csp` names no font host at all.
+
+      This replaces a non-blocking <link> to Google Fonts and the media="print"
+      flip that applied it, which existed because a render-blocking stylesheet
+      made a launch with no network look like a hang. With the files local there
+      is nothing to wait for and nothing to flip.
+    -->
+  </head>
+
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

@@ -1,0 +1,54 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "LOCKON EWAC",
+  "version": "1.0.0",
+  "identifier": "com.lockon.ewac",
+  "build": {
+    "beforeDevCommand": "npm run dev",
+    "devUrl": "http://127.0.0.1:1420",
+    "beforeBuildCommand": "npm run build",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "windows": [
+      {
+        "title": "LOCKON EWAC",
+        "width": 1400,
+        "height": 900,
+        "minWidth": 1100,
+        "minHeight": 700,
+        "decorations": true,
+        "resizable": true
+      }
+    ],
+    "security": {
+      "csp": "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; font-src 'self' data:; img-src 'self' data: blob: https://basemaps.cartocdn.com https://*.basemaps.cartocdn.com https://server.arcgisonline.com https://s3.amazonaws.com/elevation-tiles-prod/; connect-src 'self' ipc: http://ipc.localhost https://basemaps.cartocdn.com https://*.basemaps.cartocdn.com https://server.arcgisonline.com https://s3.amazonaws.com/elevation-tiles-prod/; worker-src 'self' blob:; child-src 'self' blob:; object-src 'none'; base-uri 'self'; frame-ancestors 'none'",
+      "devCsp": "default-src 'self' http://localhost:1420 http://127.0.0.1:1420; script-src 'self' 'wasm-unsafe-eval' 'unsafe-inline' http://localhost:1420 http://127.0.0.1:1420; style-src 'self' 'unsafe-inline' http://localhost:1420 http://127.0.0.1:1420; font-src 'self' data:; img-src 'self' data: blob: https://basemaps.cartocdn.com https://*.basemaps.cartocdn.com https://server.arcgisonline.com https://s3.amazonaws.com/elevation-tiles-prod/; connect-src 'self' ws://localhost:1420 ws://127.0.0.1:1420 http://localhost:1420 http://127.0.0.1:1420 ipc: http://ipc.localhost https://basemaps.cartocdn.com https://*.basemaps.cartocdn.com https://server.arcgisonline.com https://s3.amazonaws.com/elevation-tiles-prod/; worker-src 'self' blob:; child-src 'self' blob:; object-src 'none'; base-uri 'self'; frame-ancestors 'none'"
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "externalBin": [
+      "binaries/ewac-engine/ewac-engine"
+    ],
+    "resources": {
+      "binaries/ewac-engine/_internal": "_internal",
+      "binaries/wordlists": "wordlists"
+    },
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ]
+  },
+  "plugins": {
+    "sql": {
+      "preload": [
+        "sqlite:ewac.db"
+      ]
+    }
+  }
+}

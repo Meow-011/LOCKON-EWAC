@@ -1,0 +1,21 @@
+# Migration files are checksummed byte-for-byte, so their line endings are part
+# of the build.
+#
+# `lib.rs` embeds each migration with `include_str!`, which copies the working
+# tree's bytes verbatim, and sqlx hashes that text to decide whether a migration
+# has changed since it was applied. With `core.autocrlf=true` -- the Windows
+# default, and what this repo was being built under -- git checks these files out
+# as CRLF while storing them as LF. The result is that the same commit produces a
+# different checksum on a Windows checkout than on CI or on a colleague's machine
+# with `autocrlf=false`, and a user who upgrades across two such builds is met
+# with "migration 1 was previously applied but has been modified" about a file
+# nobody has touched since the first commit.
+#
+# Pinning them to LF makes the embedded bytes a property of the commit rather
+# than of whoever checked it out. LF is the right side to pin to: it is what git
+# already stores, what a Linux or CI build produces, and what the databases in
+# the field were created with.
+#
+# `scripts/check-migration-eol.mjs` enforces this, because a .gitattributes file
+# only governs a fresh checkout -- a file already present with CRLF stays CRLF.
+*.sql text eol=lf

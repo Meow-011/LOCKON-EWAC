@@ -1,0 +1,33 @@
+-- LOCKON EWAC: record when the database file's free pages were reclaimed
+-- Version: 14
+--
+-- Migration 012 gave the vault encryption at rest, and the UI reports the
+-- result as "protected". That report was false, and measurably so.
+--
+-- SQLite marks deleted pages free with their contents intact — `secure_delete`
+-- is off by default, and it is a per-connection pragma that cannot be relied on
+-- through a connection pool. 012 copies the cleartext `password` column into a
+-- new table and then `DROP TABLE credentials`; `sealLegacyCredentials()` nulls
+-- the column row by row. Neither reclaims a byte, and there was no `VACUUM`
+-- anywhere in the project.
+--
+-- Measured on a seeded vault of 300 credentials: after 012 and after sealing,
+-- all 300 passwords were still recoverable as raw bytes from the .db file. A
+-- VACUUM brought that to zero.
+--
+-- So an operator could set a passphrase, seal the vault, watch the banner
+-- report no unprotected rows, and carry the laptop off the engagement with
+-- every recovered credential readable by `strings ewac.db`. That is precisely
+-- the scenario 012's own header describes as the reason it exists.
+--
+-- Sealing now reclaims. This column is for the installs that sealed *before*
+-- that fix: their cleartext is still in the free pages and there are no
+-- `enc_version = 0` rows left to trigger a re-seal, so a one-time reclaim has
+-- to be driven by its absence instead. Nullable and unset, deliberately —
+-- every existing database genuinely has not been reclaimed, and that is what
+-- NULL records.
+--
+-- A VACUUM cannot run inside a transaction, so it cannot happen here. The app
+-- performs it and then stamps this column.
+
+ALTER TABLE vault_meta ADD COLUMN pages_reclaimed_at TEXT;

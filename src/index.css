@@ -1,0 +1,228 @@
+@import "tailwindcss";
+
+/* ====================================
+   LOCKON EWAC — Dark Tactical Theme
+   ==================================== */
+
+@theme {
+  /* ── Deep Space / Charcoal backgrounds ── */
+  --color-space-950: #080a0f;
+  --color-space-900: #0d1117;
+  --color-space-800: #141a23;
+  --color-space-700: #1c2433;
+  --color-space-600: #263044;
+  --color-space-500: #374560;
+  --color-space-400: #4a5a7a;
+
+  /* ── Neon Purple accent (LOCKON brand) ── */
+  --color-neon-50:  #faf5ff;
+  --color-neon-100: #f3e8ff;
+  --color-neon-200: #e9d5ff;
+  --color-neon-300: #d8b4fe;
+  --color-neon-400: #c084fc;
+  --color-neon-500: #a855f7;
+  --color-neon-600: #9333ea;
+  --color-neon-700: #7c3aed;
+  --color-neon-800: #6b21a8;
+  --color-neon-900: #581c87;
+
+  /* ── Risk level colors ── */
+  --color-risk-critical: #ef4444;
+  --color-risk-high:     #f97316;
+  --color-risk-medium:   #eab308;
+  --color-risk-low:      #22c55e;
+  --color-risk-info:     #3b82f6;
+
+  /* ── Signal strength ── */
+  --color-signal-strong:  #22c55e;
+  --color-signal-good:    #84cc16;
+  --color-signal-fair:    #eab308;
+  --color-signal-weak:    #f97316;
+  --color-signal-dead:    #ef4444;
+
+  /* ── Typography ── */
+  /* Webfonts come from Google Fonts, so they are unavailable in the field.
+     These fallback stacks are chosen to keep the look close when that happens:
+     condensed/geometric faces that actually ship with Windows and macOS, rather
+     than dropping straight to a generic. The app is used offline in vehicles, so
+     "no network" has to be a cosmetic downgrade, never a broken layout.
+
+     To remove the network dependency entirely: put the four woff2 files under
+     public/fonts/, add @font-face blocks here with font-display: swap, and drop
+     the <link> tags from index.html. */
+  --font-sans: 'Inter', 'Segoe UI Variable', 'Segoe UI', system-ui, -apple-system, Arial, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', 'Cascadia Mono', Consolas, 'SF Mono', Menlo, monospace;
+  --font-tactical: 'Rajdhani', 'Orbitron', 'Bahnschrift Condensed', 'Segoe UI Semibold', 'Arial Narrow', 'Helvetica Neue', system-ui, sans-serif;
+  --font-tech: 'Share Tech Mono', 'Cascadia Mono', Consolas, 'SF Mono', Menlo, monospace;
+
+  /* ── Shadows ── */
+  /* The neon glow tokens are gone, with the 64 inline `shadow-[0_0_...]`
+     utilities that sat beside them. Nothing that was being said by a glow was
+     only being said by the glow: every one of them was on an element that also
+     changed colour or border with its state, so the statement survives and the
+     light does not. Ordinary elevation shadows (`shadow-lg` and friends) are
+     untouched -- those give a panel an edge against the one behind it, which is
+     depth rather than glow. */
+
+  /* ── Animations ── */
+  --animate-pulse-slow:   pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  --animate-radar-sweep:  radarSweep 2s linear infinite;
+  --animate-slide-in:     slideIn 0.3s ease-out;
+}
+
+/* ── Keyframes ── */
+@keyframes radarSweep {
+  0%   { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+@keyframes slideIn {
+  0%   { transform: translateX(100%); opacity: 0; }
+  100% { transform: translateX(0); opacity: 1; }
+}
+
+
+@keyframes fadeIn {
+  0%   { opacity: 0; transform: translateY(8px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes scanline {
+  0%   { transform: translateY(-100%); }
+  100% { transform: translateY(100vh); }
+}
+
+/* ====================================
+   Base Styles
+   ==================================== */
+
+body {
+  background-color: var(--color-space-950);
+  color: #e5e7eb;
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow: hidden; /* Desktop app — no page scroll */
+  margin: 0;
+  padding: 0;
+}
+
+/* ── Disable Default Focus Outlines Globally ── */
+*:focus {
+  outline: none !important;
+}
+
+/* ── Custom Scrollbar ── */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-space-500);
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-neon-700);
+}
+
+/* ====================================
+   Component Utilities
+   ==================================== */
+
+/* Glassmorphism card */
+.glass-card {
+  background: rgba(20, 26, 35, 0.6);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(55, 69, 96, 0.3);
+  border-radius: 0.75rem;
+}
+
+/* A neon border, and now only a border. */
+.neon-border {
+  border: 1px solid rgba(168, 85, 247, 0.5);
+}
+
+/* Tactical text style */
+.text-tactical {
+  font-family: var(--font-tactical);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+/* ── Scan line overlay effect ──
+   Requires `overflow-hidden` on the element it is applied to. The sweep
+   translates by 100vh, which is the viewport height and not the element's,
+   so without clipping it travels straight out of its container and draws a
+   line across whatever happens to be underneath. That is what it did on the
+   Decryptor page, where the cards do not clip; it is used on the map, which
+   does. */
+.scanline-overlay::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--color-neon-500), transparent);
+  animation: scanline 4s linear infinite;
+  opacity: 0.15;
+  pointer-events: none;
+}
+
+/* ── MapLibre overrides ── */
+.maplibregl-ctrl-attrib {
+  display: none !important;
+}
+
+.maplibregl-canvas {
+  border-radius: 0.75rem;
+}
+
+/* Tactical Popup Override */
+.tactical-popup .maplibregl-popup-content {
+  background: rgba(13, 17, 23, 0.95); /* space-900 */
+  border: 1px solid rgba(55, 69, 96, 0.5); /* space-500 */
+  border-radius: 0.5rem;
+  padding: 0;
+  /* Depth only. The second shadow was a purple halo around every map popup. */
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.8);
+  backdrop-filter: blur(8px);
+}
+
+.tactical-popup .maplibregl-popup-tip {
+  border-top-color: rgba(55, 69, 96, 0.5) !important;
+}
+.tactical-popup.maplibregl-popup-anchor-bottom .maplibregl-popup-tip {
+  border-top-color: rgba(55, 69, 96, 0.5) !important;
+}
+.tactical-popup.maplibregl-popup-anchor-top .maplibregl-popup-tip {
+  border-bottom-color: rgba(55, 69, 96, 0.5) !important;
+}
+
+/* ── Custom Utilities ── */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none; /* IE and Edge */
+  scrollbar-width: none; /* Firefox */
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: rgba(13, 17, 23, 0.5); /* space-900 */
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: var(--color-space-500);
+  border-radius: 9999px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: var(--color-space-400);
+}

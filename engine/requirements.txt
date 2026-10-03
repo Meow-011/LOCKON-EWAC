@@ -1,0 +1,36 @@
+# LOCKON EWAC Engine — Python Dependencies
+# Phase 1: Core only
+pydantic>=2.0
+
+# Phase 2: WiFi + GPS (uncomment when ready)
+scapy>=2.5
+pywifi>=1.1
+pyserial>=3.5
+pynmea2>=1.19
+IPy>=1.1
+
+# Phase 5: Offensive Ops
+paramiko>=3.0.0
+requests>=2.31.0
+
+# Phase 6: Post-Processing & Machine Learning (GPR)
+scikit-learn>=1.3.0
+numpy>=1.24.0
+scipy>=1.10.0
+
+# Windows specific
+comtypes>=1.4.16
+
+# Development only. Not imported by the engine, so PyInstaller does not bundle it.
+#
+# `python -m compileall` proves a file parses, which is all CI checked, and a name
+# that is never defined parses perfectly. Two shipped that way: `logger` was used
+# in three exception handlers in offensive/decryptor.py and one in scanner/lan.py
+# with no `logger` in either module. A NameError raised inside an `except` block is
+# not caught by that block, so the lan.py one escaped `_read_arp_cache` and aborted
+# the entire sweep with "Scan failed: name 'logger' is not defined" -- on the exact
+# path the ARP-read error reporting exists for.
+#
+# CI gates on undefined names only; the other categories pyflakes reports are
+# style and are not worth a red cross.
+pyflakes>=3.0

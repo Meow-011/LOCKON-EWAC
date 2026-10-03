@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Security vulnerability
+    url: https://github.com/Meow-011/LOCKON-EWAC/security/advisories/new
+    about: Report privately. Do not open a public issue for a security flaw.
+  - name: Troubleshooting first
+    url: https://github.com/Meow-011/LOCKON-EWAC/blob/main/docs/TROUBLESHOOTING.md
+    about: Symptoms that are the platform's limits rather than defects, and which is which.

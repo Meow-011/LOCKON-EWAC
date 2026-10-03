@@ -1,0 +1,237 @@
+# Run the checks that nobody remembers to run.
+#
+# docs/ENGINEERING_LOG.md has listed "No CI" under known gaps for a long time:
+# 1,254 tests across two languages, every one of them manual, so a regression
+# only surfaces when somebody happens to run the suite before committing.
+#
+# windows-latest for both jobs, deliberately. The engine needs it — `comtypes`
+# is Windows-only and `engine/scanner/wifi.py` imports pywifi at module scope — and the
+# frontend runs there too so CI matches the platform every one of these checks
+# has actually been verified on. Adding an ubuntu leg for the frontend would be
+# worth doing; it is left out here rather than guessed at, because a red cross
+# from an unverified platform assumption teaches people to ignore the badge.
+#
+# What is NOT here, and why:
+#   * `test:csp:release` and `test:export:release` drive the built application
+#     over the Chrome DevTools Protocol. They need a full `tauri build` plus the
+#     PyInstaller sidecar — around 15 GB of disk and a linker that wants well
+#     over a gigabyte to itself.
+#   * `check:margins` reads the PDFs in `scripts/baselines/`, which are
+#     gitignored on purpose: a baseline is survey data, and belongs to the scan
+#     it was taken from rather than to the repository.
+# Those three stay manual before a release. This covers everything that can be
+# checked without building the app.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  frontend:
+    name: Frontend (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+
+      # Node 22 is a hard floor, not a preference: `npm run test:db` runs the
+      # database modules against real SQLite through node:sqlite.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - run: npm ci
+
+      - name: Type check
+        run: npx tsc --noEmit
+
+      - name: Unit tests (17 suites)
+        run: npm test
+
+      # Must precede check:severity-css, which reads the built stylesheet: a
+      # Tailwind class assembled from a variable resolves to no rule at all, and
+      # that is invisible in the source.
+      # Separate from `npm test` on purpose. Those suites drive pure modules, stores and
+      # real SQLite under `node --test`, and that is what makes them fast and what makes
+      # their SQL guarantees worth having. These render components under jsdom, which
+      # costs about a minute of environment setup -- and putting jsdom underneath the
+      # database suites would make the thing they exist to prove harder to trust, not
+      # easier.
+      - name: Component tests
+        run: npm run test:components
+
+      - name: Build
+        run: npm run build
+
+      - name: Every severity class has a rule in the built CSS
+        run: npm run check:severity-css
+
+      - name: The docs still describe this repository
+        run: npm run check:docs
+
+      # Placed first among the repository checks because it is the one that
+      # explains the others going strange: a source file hidden from a fresh
+      # clone makes every later step here compile a different program from the
+      # one on the author's disk. It is also the check with the most reason to
+      # run HERE rather than only locally -- a working copy has the files.
+      - name: What CI checks out is what this machine compiles
+        run: npm run check:ci
+
+      - name: Every shipped wordlist is documented
+        run: npm run check:wordlists
+
+      - name: Migration files are LF and registered
+        # A CRLF checkout changes a migration's checksum without changing the
+        # migration, and sqlx then refuses to open any database the other
+        # spelling created. This runner checks out LF; a Windows developer's
+        # does not, so the check has to be the thing that agrees, not the OS.
+        run: npm run check:migrations
+
+      - name: Every font face has a file, and nothing fetches one at runtime
+        # The fonts are committed so a clone builds with no network. A face
+        # whose file is missing falls back silently, and a <link> to a font CDN
+        # reintroduced later works on a desk and fails in the field, which is
+        # where this tool is used.
+        run: npm run check:fonts
+
+      - name: No third party is reached over plain HTTP
+        # A URL embedded in an exported KML or report is fetched on the
+        # recipient's machine, which makes a cleartext one a record of when they
+        # opened the assessment. Scanner traffic to a target is exempt: probing a
+        # device's own web service over http is the job.
+        run: npm run check:cleartext
+
+      - name: Every KMZ icon is packed and present
+        # A KMZ names its icons by a path inside the archive. A viewer that
+        # cannot resolve one draws a default pin and reports nothing, which is
+        # the same silent failure the external URLs had. Three names have to
+        # agree and a rename touches one.
+        run: npm run check:kmz
+
+      - name: The Inno installer ships what the Tauri bundlers ship
+        # Three installers, one product, and the .iss repeats Tauri's file
+        # list by hand. Add a resource and the MSI carries it, the Inno build
+        # succeeds, and the installed app is missing a file with no error
+        # anywhere. Also pins the version across four files and checks the
+        # uninstall prompt names every directory it offers to delete.
+        run: npm run check:installer
+
+      - name: Every Settings card heading has an icon
+        # Three of fourteen had one and eleven did not, which is what a
+        # convention looks like when it is only a habit. The failure is
+        # invisible to everything else: a heading without an icon renders,
+        # type-checks and reads fine alone.
+        run: npm run check:icons
+
+      # Nothing compiled the Rust host before this, so a non-compiling `lib.rs`, an
+      # invalid capability identifier, a malformed `tauri.conf.json` or a renamed
+      # migration file all passed CI green -- every one of them is consumed by
+      # `generate_context!` at build time, not by `tsc`.
+      #
+      # `cargo check` cannot run bare: `externalBin` and `resources` make the build
+      # script fail on a missing sidecar before it reaches the Rust. The placeholders
+      # below exist to get past that, and they are empty on purpose -- this step
+      # proves the host compiles and the permission manifest is valid, and claims
+      # nothing about the sidecar. `npm run check:sidecar` is what validates the real
+      # one, and it stays manual because it needs the PyInstaller build.
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      - name: Placeholders for the resources the build script requires
+        shell: bash
+        run: |
+          mkdir -p src-tauri/binaries/ewac-engine/_internal src-tauri/binaries/wordlists
+          : > src-tauri/binaries/ewac-engine/ewac-engine-x86_64-pc-windows-msvc.exe
+
+      - name: The Rust host compiles and the capabilities are valid
+        working-directory: src-tauri
+        run: cargo check --locked
+
+  engine:
+    name: Engine
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+          cache: pip
+          # Stated explicitly. The action resolves the pip cache key from a
+          # requirements file, and this project has none at the repository root
+          # -- leaving it to the default is a gamble on glob behaviour that
+          # fails at the setup step, before a single test has run.
+          cache-dependency-path: engine/requirements.txt
+
+      - name: Install engine dependencies
+        run: python -m pip install -r engine/requirements.txt
+
+      - name: Syntax check
+        run: python -m compileall -q engine
+
+      # `compileall` only proves the files parse, and a name that is never
+      # defined parses perfectly. Two shipped that way, both `logger` in an
+      # `except` block -- where a NameError is not caught by the handler it is
+      # raised in, so one of them aborted the whole LAN sweep with
+      # "Scan failed: name 'logger' is not defined".
+      #
+      # Gated on undefined names alone. pyflakes also reports unused imports and
+      # f-strings without placeholders; those are style, and a red cross for
+      # style teaches people to ignore the badge.
+      # The exit status is checked, not just the output.
+      #
+      # This was `python -m pyflakes engine | tee pyflakes.txt || true`, and a
+      # pipeline's status is the *last* command's -- `tee` always succeeds, so the
+      # `|| true` was redundant and, more to the point, a pyflakes that crashed or
+      # could not import wrote to stderr and left the file empty. `grep -q` then
+      # matched nothing and the step passed having checked zero files. A gate that
+      # goes green when the tool did not run is worse than no gate.
+      #
+      # pyflakes exits 0 with no findings and 1 with findings; anything else is the
+      # tool itself failing.
+      - name: No undefined names
+        shell: bash
+        run: |
+          # GitHub runs `shell: bash` as `bash --noprofile --norc -eo pipefail`,
+          # so `-e` is already on and `set -o pipefail` below was only ever
+          # restating it. That mattered: under `-e` the pyflakes line aborted the
+          # step the moment pyflakes exited 1, and `status=$?` and every branch
+          # after it were unreachable. pyflakes exits 1 for ANY finding, so the
+          # step failed on 39 unused imports and f-strings without placeholders
+          # --- the categories this check deliberately does not gate on --- while
+          # reporting "undefined names", of which there were none.
+          #
+          # `|| status=$?` keeps the exit code without letting `-e` have it.
+          status=0
+          python -m pyflakes engine > pyflakes.txt || status=$?
+          if [ "$status" -gt 1 ]; then
+            echo "::error::pyflakes itself failed (exit $status); nothing was checked"
+            cat pyflakes.txt
+            exit 1
+          fi
+          if [ "$status" -eq 1 ] && [ ! -s pyflakes.txt ]; then
+            echo "::error::pyflakes reported findings but produced no output"
+            exit 1
+          fi
+          if grep -q 'undefined name' pyflakes.txt; then
+            echo "::error::pyflakes found undefined names in engine/"
+            grep 'undefined name' pyflakes.txt
+            exit 1
+          fi
+
+      # run_all.py shells out to each test file and returns non-zero if any
+      # fails, which is what gates this step. The suite needs no wireless
+      # adapter: the one test that reaches into scanner/wifi.py imports a pure
+      # string function, and pywifi imports fine on a machine with no radio.
+      - name: Engine suite (32 files)
+        run: python engine/tests/run_all.py

@@ -1,0 +1,87 @@
+name: Bug report
+description: Something behaves differently from what it says it does
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Before filing, two quick checks that answer a good share of reports:
+
+        * **Is the sidecar current?** The Python engine is a compiled binary.
+          Editing `engine/*.py` changes nothing until it is rebuilt.
+        * **Is it already known?** `docs/TROUBLESHOOTING.md` lists the symptoms
+          that are the platform's limits rather than defects, and says which.
+
+        If this is a **security** issue, do not file it here — see
+        [SECURITY.md](../blob/main/SECURITY.md) for the private channel.
+
+  - type: input
+    id: version
+    attributes:
+      label: Build
+      description: >-
+        Settings shows the app version and the engine build stamp (version,
+        commit, build time). Paste both. A version mismatch between the two is
+        itself a common cause, and the stamp exists because of one.
+      placeholder: "app 1.0.0 / engine 1.0.0 b8d8c6f built 2026-10-01T15:11:02+00:00"
+    validations:
+      required: true
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: >-
+        What you did, what the tool did, and what you expected instead. If the
+        tool stated something you know to be wrong, say what the true value was
+        and how you know — this project treats a confident wrong answer as more
+        serious than a crash.
+    validations:
+      required: true
+
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. ...
+        2. ...
+        3. ...
+    validations:
+      required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Wardriving / scanning
+        - AP position estimates / tactical map
+        - LAN recon (INTRUSION)
+        - Reports / PDF export
+        - Engagement scope / audit trail
+        - Decryptor / offensive modules
+        - Install or build
+        - Other / not sure
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Engine log
+      description: >-
+        Settings loads it without leaving the app, or find it at
+        `%LOCALAPPDATA%\LOCKON-EWAC\logs\ewac-engine.log`. The last 30 lines are
+        usually enough. **Redact SSIDs, BSSIDs and hostnames** of any network
+        that is not yours — this is a public issue tracker.
+      render: text
+
+  - type: textarea
+    id: hardware
+    attributes:
+      label: Hardware, if relevant
+      description: >-
+        Wi-Fi adapter and whether it supports monitor mode, GPS receiver and COM
+        port, and whether you were running as Administrator. Most "capture found
+        nothing" reports are a managed-mode adapter.
