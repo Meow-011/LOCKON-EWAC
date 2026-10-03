@@ -341,17 +341,22 @@ single connection cannot: anything that depends on which connection in a pool
 served a statement (`PRAGMA secure_delete` is the live example), and real WAL
 behaviour.
 
-## The installer's runtime paths are tested by hand, and are not tested yet
+## The installer's runtime paths are tested by hand, and have now been run
 
 Everything in `installer/lockon-ewac.iss` outside `[Code]` is checked by
 compiling it. The `[Code]` procedures are not: they run only during a real
 install, several need elevation, and two of them exist precisely to handle
-situations a normal install never reaches. Nothing below has been executed on a
-build of v1.0.0 --- that is the honest state, recorded here rather than left as
-an assumption, because every one of these paths is a thing that runs when
-something has already gone slightly wrong.
+situations a normal install never reaches.
+
+**All eight were run on 2026-10-03** by the maintainer, against the v1.0.0
+installer --- sha256 `7527db67af61fca95726e2db8258b1de0d5177c1ae836c1963657fc4d2fc6a78`, the
+same build the release carries --- and all eight behaved as the table says. This
+section said "not tested yet" for the whole of v1.0.0's development, which was
+accurate at the time and is the reason it was worth saying.
 
 Run these from an elevated prompt, against `dist-installer\lockon-ewac-setup.exe`.
+Re-run them whenever anything inside `[Code]` changes, because nothing automatic
+reaches that code: `ISCC.exe` proves it parses and nothing else.
 
 | # | What to run | What must happen | Which code it covers |
 |---|---|---|---|
@@ -368,6 +373,25 @@ Test 6 is the one most worth doing. `runasoriginaluser` is a single flag whose
 absence produces an application that works perfectly in the wizard and then
 writes its database into the elevated account's profile, so the operator's own
 archive appears empty and nothing reports an error.
+
+### What the run did not establish
+
+**Test 3 cannot reach the guard it is listed against, on a machine like this
+one.** `WebView2Confirmed()` returns true and exits the moment
+`WebView2Installed()` is true; `WizardSilent()` is only consulted on the path
+where the runtime is *absent*. The test machine renders the application, so it
+has WebView2, so the silent install completed without the guard ever being
+consulted. What test 3 proved is that a silent install finishes with no prompt
+on a machine that already has the runtime --- worth knowing, and not what the
+right-hand column claims.
+
+Exercising that guard needs a Windows image with no WebView2, which is the one
+situation where a prompt would hang an unattended deployment for ever. It is
+listed in the known gaps rather than quietly carried as covered.
+
+Two smaller limits, for the same reason: test 8 installed v1.0.0 over v1.0.0, so
+`AppId` stability is shown across identical versions and not across a version
+change; and all eight ran on one Windows 11 build under one account.
 
 ## What each component suite holds in place
 

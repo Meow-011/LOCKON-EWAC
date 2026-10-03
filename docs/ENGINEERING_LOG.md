@@ -2298,6 +2298,57 @@ matched at every depth, a shell option set by the runner rather than the script,
 a presence test standing in for a build test. None was visible from a working copy,
 and the fix for each only became visible once the one before it stopped masking it.
 
+### Phase 43: the eight steps were run
+
+`docs/TESTING.md` carried a section headed "are not tested yet" for the whole of
+v1.0.0's development. It described eight manual install tests, said plainly that
+none had been executed against a v1.0.0 build, and gave the reason: everything in
+`[Code]` runs during a real install and `ISCC.exe` proves only that it parses.
+
+All eight were run, against the installer the release carries --- sha256
+`7527db67…`, the same digest `check:installer` holds `docs/INSTALL.md` to --- and
+all eight behaved as the table says. Installing over a running copy did not fail
+on a locked file. An orphaned `ewac-engine.exe` with its window already killed was
+still killed. The uninstall prompt asked before removing survey data, and the
+silent uninstall kept it. The launched application ran as the operator rather than
+the elevating account, which is the one worth the most: `runasoriginaluser` is a
+single flag whose absence produces an app that works perfectly in the wizard and
+then writes its database into somebody else's profile, with nothing reporting an
+error.
+
+**And the run established less than the table claims, in one specific place.**
+
+Test 3 is listed against the `WizardSilent()` guard in `WebView2Confirmed()`. That
+function reads:
+
+    Result := True;
+    if WebView2Installed() then
+      Exit;
+    if WizardSilent() then
+      Exit;
+
+It returns true and leaves the moment the runtime is present. The test machine
+renders this application, so it has WebView2, so the silent install completed
+without `WizardSilent()` ever being consulted. The step passed; what it proved is
+that a silent install finishes with no prompt **on a machine that already has the
+runtime**, which is not what the right-hand column says it covers.
+
+That is a defect in the test plan rather than in the installer, and it is the
+same shape as the ones this log keeps recording: a check that passes for a reason
+other than the one claimed. Reaching that guard needs a Windows image with no
+WebView2 --- which is precisely the situation where a prompt would hang an
+unattended deployment for ever, so it is the one case worth reaching. It is in the
+known gaps now instead of being carried as covered.
+
+Two smaller limits recorded with it: test 8 installed v1.0.0 over v1.0.0, so
+`AppId` stability is shown across identical versions rather than across a version
+change; and all eight ran on one Windows 11 build under one account.
+
+The header of `installer/lockon-ewac.iss` said these steps had not been run. It
+says what happened now, including the caveat, because a file that spent nine
+phases being honest about what nobody had tried should not become vague on the day
+somebody tried it.
+
 ### Known gaps, stated plainly
 
 Carrying these openly because a tool whose job is producing evidence should not
@@ -2306,6 +2357,15 @@ overstate itself:
 - **Offline cartography: the archive reads, and the last link is unconfirmed.** With no network the map was a flat grey background — markers and track on nothing. A PMTiles archive is now read straight off disk: `basemap_status` and `read_basemap_range` in the Rust host serve byte ranges from one fixed path, the `pmtiles://` protocol feeds MapLibre, and the style is generated from `protomaps-themes-base` against glyphs carried in `public/basemap-glyphs/`. Two narrow commands rather than a filesystem permission, because this renderer holds `sql:allow-execute` and spawns the sidecar, and the project has been removing capabilities rather than adding them — the renderer never supplies a path and cannot influence one. **What is verified:** `test:basemap` (8 tests) proves the style names no host at all, checked over the serialised document rather than over known fields, since the layers come from a package that could introduce a URL anywhere; that tiles come from the protocol rather than a TileJSON URL nobody serves; that the source `maxzoom` is the archive's own; and that every glyph block the style can request is committed. `test:basemap:runtime` drives the built application with all three tile hosts blocked and the HTTP cache disabled, and the app reports `[basemap] archive ready: z0-z15` — so the host, the byte ranges and the header parse are proven end to end on the shipped binary. Two Rust tests cover the base64 encoder, the first Rust tests in this project. **What is NOT verified, and should not be read as working:** that the style reaches the canvas. The honest attempts at that are recorded in `check-basemap-runtime.mjs` because the second looked like it had succeeded — a screenshot pixel passed on a dark map, and then passed again with the archive moved aside, because the map area is dark either way. Settling it needs the map pointed at ground the archive covers, and moving the map needs a handle this application deliberately does not expose. Until that is closed, treat the offline basemap as plumbing that is proven to the data source and no further. `INSTALL.md` says how to produce an extract; the archive is not shipped because the right one depends on where the work is, and the Settings card states whether one is installed, where it goes, and what it covers — "installed" and "covers where you are standing" being different claims.
   **The Settings card printed the coverage as `11.22, 43.75, 11.29, 43.79`** — four bare floats in the order PMTiles stores them, with nothing saying which was which. The one question that figure exists to answer is "does this cover where I am working", and displayed that way it was not information. `describeBounds` gives hemispheres rather than signs and an approximate extent in kilometres, labelled "about" because it is the equirectangular approximation rather than a measurement. Six tests, including the one that keeps longitude scaled by the cosine of the latitude — without it a small northern extract reads as continental.
 - [x] **The Inno installer had never compiled, and nothing had ever tried.** `installer/lockon-ewac.iss` is documented in INSTALL.md as a build step and is 511 lines of carefully reasoned script — and `ISCC.exe` refused it with `Error on line 242: Syntax error. Compile aborted.` The cause is a trap the file itself warns about, in one of its own comments: a Pascal brace comment ends at the **first** closing brace, so an Inno constant written inside one terminates it early and the remainder is parsed as code. The hashcat probe's comment contained `{`+`%USERPROFILE}`. Nothing caught it because nothing compiled it: Inno Setup is not on a GitHub runner, so CI cannot, and no human had run the documented command. It compiles now, and produces a 114 MB setup executable. **The second finding is what the uninstall prompt was describing.** It offers to delete `%LOCALAPPDATA%\LOCKON-EWAC` and described it as "CVE snapshot, engine log, and wordlists you uploaded" — omitting `\evidence`, which holds the captured .pcap and handshake files every SHA-256 in every issued report refers to. `DelTree` takes the parent, so Yes has always removed them. An operator passing a machine on would reasonably have said Yes to caches and logs. The prompt now names all four directories and says what the first one is. **And the documented version was wrong**: both the script header and INSTALL.md said Inno Setup 7, while what is installed and what this was verified against is 6. `npm run check:installer` covers the parts a compiler cannot: the version agreeing across four files, every `externalBin` and `resource` Tauri bundles also appearing in `[Files]` — three installers for one product means a second file list maintained by hand, and Inno fails on a `Source:` it cannot find but never on one nobody wrote — the uninstall prompt naming every directory the engine writes to, and that brace-comment trap, statically. Each rule was verified by reintroducing the fault.
+- **The silent-install guard has never been reached.** The eight manual install
+  steps were run on 2026-10-03 and all eight passed, but test 3 — the one listed
+  against `WizardSilent()` — cannot exercise it on a machine that has WebView2:
+  `WebView2Confirmed()` exits before consulting it whenever the runtime is
+  present. So the behaviour that matters, an unattended install meeting a machine
+  with **no** WebView2 and choosing to proceed rather than blocking on a dialog
+  nothing can click, is reasoned and reviewed but not observed. It needs a Windows
+  image without the runtime. Until then, treat an unattended deployment to a
+  stripped image as unproven.
 - **CVE coverage.** The bundled snapshot is a curated set keyed to the services the scanner fingerprints, not a full view of NVD. Absence of a CVE is not evidence a host is unaffected, and the report says so.
 - **Text-mode subprocess output is now decoded explicitly.** Every `subprocess.run`/`Popen` in the engine passes `encoding="utf-8", errors="replace"`. Without it Python decodes a child's bytes as the console's ANSI codepage — cp1252 on a typical install — *strictly*, so one byte outside that range raises `UnicodeDecodeError` from inside the call. That is a `ValueError`, so it slipped past handlers written for `OSError`/`SubprocessError`: it made `_read_arp_cache` return an empty table (narrowing a sweep from 253 addresses to two while reporting normally), and it let the hashcat availability check fail *open*, leaving the Start button enabled with hashcat's state unknown. A Thai or German adapter description is enough to trigger it.
 - **Monitor mode cannot be auto-detected on Windows** without disrupting the adapter, so it is reported as unknown. Confirm with a test capture.

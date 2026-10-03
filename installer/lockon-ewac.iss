@@ -17,9 +17,12 @@
 ; `npm run check:installer` will not let you change only one.
 ;
 ; What that compile does *not* cover is everything in [Code]: those procedures
-; run during a real install, and the eight manual steps in docs/TESTING.md have
-; not been run against a 7-built setup any more than they were against a 6-built
-; one.
+; run during a real install. The eight manual steps in docs/TESTING.md were run
+; against this 7-built setup on 2026-10-03 and all eight behaved as described --
+; with one caveat recorded there: the silent-install guard cannot be reached on a
+; machine that already has WebView2, which the test machine does.
+;
+; Re-run them whenever anything in [Code] changes. ISCC proves it parses.
 ;
 ; It expects `npm run tauri build` to have run first, so that
 ; src-tauri\target\release\ holds the app, the sidecar and its resources.
